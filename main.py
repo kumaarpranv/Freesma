@@ -32,7 +32,10 @@ def img():
 def upload():
     if request.method == 'POST':
         # check if the post request has the file part
-        print(request.files)
+        
+        file=request.files['file']
+        print(file.filename)
+        
         if 'file' not in request.files:
             return "hello1"
         file = request.files['file']
@@ -54,12 +57,16 @@ def upload():
             generate_output(imgpath,modelpath,ext)
             imgname, imgext = os.path.splitext(imgpath)
             
-           
+            print(imgname)
             return render_template('index.html',imgurl=imgname+ext) #redirect(url_for('uploaded_file',filename=filename))
-    
+        
     else:
         return redirect(url_for('/'))
-        
+
+@app.route('/img')
+def showimg():
+    return render_template('post.html')
+
 
 if __name__ == '__main__':
    app.run(debug = True)

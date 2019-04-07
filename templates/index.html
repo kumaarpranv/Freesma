@@ -8,28 +8,34 @@
     <title>Freesma</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
-   
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
-  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    
+    
 </head>
+
+
+
+
+
 
 <body style="background-image: url('../static/images/abstract1.png');">
         <nav class="navbar navbar-expand-sm navbar-dark bg-primary ">
                 <a class="navbar-brand" href="#">Freesma</a>
             </nav>
-    <div class="container bg-light" style="min-height: 100%;height: 100%;">
+    <div class="container bg-light" id="maincontainer" style="min-height: 100%;height: 100%;">
             
-            
+        <div class="loader" id="loader" style="display:none;"></div>
+
+        <div class="container" id="contentdiv">
             <center>
 
-            
-    
            <br /><br />
      <h1>Freesma</h1><br/>
     <form method=post enctype=multipart/form-data action="/uploader" >
         <div class="form-group row col-6 ">
-       <label for="model"> select style: </label> <select name="model" class="custom-select" >
+       <label for="model"> select style: </label> <select id="model" name="model" class="custom-select" >
             
             <option value="models/eccv16/composition_vii.t7">composition</option>
             <option value="models/eccv16/the_wave.t7">the wave</option>
@@ -49,31 +55,176 @@
      <div class="form-group custom-file col-6">
             <input type="file" class="custom-file-input" id="customFile" name="file">
             <label class="custom-file-label" for="customFile">Choose file</label>
+          
+            <br /><label style="margin-top:10px;">-(or)-</label><br />
+        </div>
+        <div class="form-group custom-file col-6">
+            <br /><br />
+          <input id="snap" type="button" onclick="snapper();" class="custom-input-label btn btn-primary" value="snap"/>
+          <input id="capture" type="button" class="custom-input-label btn btn-primary" value="capture" style="display: none;"/>
+        </div>
+        <br />
+          <div class="form-group custom-file col-6">
+              <video id="player" height="400" width="400"  controls autoplay style="display: none;"></video>
+          <img name="imagePreview" id="imagePreview" src="" height="400" width="400" style="margin-top:10px;display:none;"/>
+          <canvas id="canvas" width=320 height=240 style="display:none;"></canvas>
+          <input type="text" name="url" id="url" style="display: none;"/>
           </div>
-     
           <br /><br />
-      <div class="form-group col-6">
-      <input type="submit" class="btn btn-primary" value=Upload />
+      <div class="form-group custom-file col-6" id="submitButton">
+      <input type="button" class="btn btn-primary" value=Upload onclick="saveImg();"/>
     </div>
     </form>
     {% if imgurl!= None %}
     <div class="container">
-    <img src={{imgurl}} name="img" height="400" width="400"/>
+    <img src={{imgurl}} name="img" id="imgout" height="400" width="400"/>
     </div>
+
+    <script>
+      incHeight();
+    
+    </script>
     {% endif %}
 
 </center>
 
 
-
+</div>
 </div>
 </body>
 </html>
+
+
+
 <script>
-        // Add the following code if you want the name of the file appear on select
-        $(".custom-file-input").on("change", function() {
-          var fileName = $(this).val().split("\\").pop();
-          $(this).siblings(".custom-file-label").addClass("selected").html(fileName);
+    
+    function incHeight() {
+    var el = document.getElementById("maincontainer");
+    var height = el.offsetHeight;
+    var newHeight = height + 200;
+    el.style.height = newHeight + 'px';
+}
+
+    function saveImg()
+    {
+      const img = document.getElementById('imagePreview');
+      var model=$('#model').val();
+      var fname=Math.random().toString(36).slice(2);
+      fname+='.png';
+      fetch(img.src)
+      .then(res => res.blob())
+      .then(blob => {
+        const file = new File([blob], fname, blob)
+        console.log(file)
+        var data = new FormData();
+        data.append('file', file);
+        data.append('model',model);
+
+      $.ajax({
+        url :  "/uploader",
+        type: 'POST',
+        data: data,
+        contentType: false,
+        processData: false,
+        success: function(data) {
+          var contentdiv=document.getElementById('contentdiv');
+          contentdiv.display='none';
+          var loader=document.getElementById('loader');
+          loader.display='block';
+          document.write(data);
+          document.close();
+        },    
+        error: function() {
+         // alert("not so boa!");
+        }
+      });
+      })
+
+     
+
+     
+    }
+
+    function snapper()
+    {
+      console.log("snap");
+      const snap = document.getElementById('snap');
+      snap.style.display='none';
+      const player = document.getElementById('player');
+      player.style.display= 'block'; 
+      const canvas = document.getElementById('canvas');
+      const context = canvas.getContext('2d');
+      const captureButton = document.getElementById('capture');
+      $('#submitButton').css("display", 'none');
+      const imgprev=document.getElementById('imagePreview');
+      captureButton.style = 'block';
+
+      const imgout = document.getElementById('imgout');
+      if(imgout !== null)
+      imgout.style.display='none';
+      const constraints = {
+        video: true,
+      };
+
+      captureButton.addEventListener('click', () => {
+        // Draw the video frame to the canvas.
+        context.drawImage(player, 0, 0, canvas.width, canvas.height);
+        
+        var image = document.getElementById('imagePreview');
+        image.src = canvas.toDataURL();
+        
+        let stream = player.srcObject;
+        let tracks = stream.getTracks();
+
+         tracks.forEach(function(track) {
+            track.stop();
+           });
+
+        player.srcObject = null;
+        captureButton.style.display ='none';
+        player.style.display= 'none';
+        snap.style.display='block';
+        imgprev.style.display='block';
+        var mainc=document.getElementById('maincontainer');
+        incHeight();
+            $('#submitButton').css("margin-top", 360);
+            $('#submitButton').css("display", 'block');
+        
+      });
+
+      // Attach the video stream to the video element and autoplay.
+      navigator.mediaDevices.getUserMedia(constraints)
+        .then((stream) => {
+          player.srcObject = stream;
         });
-        </script>
+
+       
+    }
+
+    function readURL(input) {
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        var margintop=190;
+        const imgout = document.getElementById('imgout');
+        if(imgout !== null)
+        imgout.style.display='none';imgout.style.display='none';
+        reader.onload = function (e) {
+          $("#imagePreview").show();
+            $('#imagePreview').attr('src', e.target.result);
+            $('#submitButton').css("margin-top", margintop);
+            incHeight();
+
+         
+        }
+
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+$("#customFile").change(function () {
+    readURL(this);
+});
+    </script>
+
+
 
